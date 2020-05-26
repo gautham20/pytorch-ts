@@ -1,3 +1,10 @@
+# ignore data folders
+data
+sequence_data
+runs
+models
+results
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

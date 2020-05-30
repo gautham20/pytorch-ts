@@ -173,7 +173,7 @@ def sequence_builder(data, n_steps_in, n_steps_out, key_column, x_cols, y_col, y
 
 
 if __name__ == '__main__':
-    data = reduce_mem_usage(pd.read_pickle('../data/processed_data_test_stdscaler_ms.pkl'))
+    data = reduce_mem_usage(pd.read_pickle('../data/processed_data_log_valid_stdscaler.pkl'))
     sequence_data = sequence_builder(data, 180, 90, 
         'store_item_id', 
         ['sales', 'day_sin', 'day_cos', 'dayofweek_sin', 'dayofweek_cos', 'month_sin', 'month_cos', 'year_mod'], 
@@ -181,4 +181,4 @@ if __name__ == '__main__':
         ['sales', 'day_sin', 'day_cos', 'dayofweek_sin', 'dayofweek_cos', 'month_sin', 'month_cos', 'year_mod'],
         ['item', 'store', 'date', 'mean_sales']
     )
-    sequence_data.to_pickle('../sequence_data/sequence_data_stdscaler_ms_valid.pkl')
+    sequence_data.to_pickle('../sequence_data/sequence_data_log_stdscaler_valid.pkl')

@@ -8,6 +8,11 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 import tqdm
 from tqdm.notebook import tqdm  
+import pickle
+
+def save_dict(path, name, _dict):
+    with open(path/f'{name}.pickle', 'wb') as handle:
+        pickle.dump(_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 class TorchTrainer():
     def __init__(self, name, model, optimizer, loss_fn, scheduler, device, **kwargs):
@@ -26,6 +31,7 @@ class TorchTrainer():
         self.additional_metric_fns = kwargs.get('additional_metric_fns', {})
         self.additional_metric_fns = self.additional_metric_fns.items()
         self.pass_y = kwargs.get('pass_y', False)
+        self.valid_losses = {}
         
     def _get_checkpoints(self, name=None):
         checkpoints = []
@@ -35,6 +41,7 @@ class TorchTrainer():
             checkpoint_epoch = int(checkpoint_name.split('_')[-1])
             checkpoints.append((cp, checkpoint_epoch))
         checkpoints = sorted(checkpoints, key=lambda x: x[1], reverse=True)
+        #self.valid_losses = pd.read_pickle(self.checkpoint_path/'valid_losses.pickle')
         return checkpoints
 
     def _clean_outdated_checkpoints(self):
@@ -59,6 +66,7 @@ class TorchTrainer():
         if valid_loss:
             checkpoint.update({'loss': valid_loss})
         torch.save(checkpoint, self.checkpoint_path/f'checkpoint_{epoch}')
+        save_dict(self.checkpoint_path, 'valid_losses', self.valid_losses)
         print(f'saved checkpoint for epoch {epoch}')
         self._clean_outdated_checkpoints()
 
@@ -89,6 +97,11 @@ class TorchTrainer():
             print(f'loaded checkpoint for epoch - {checkpoint["epoch"]}')
             return checkpoint['epoch']
         return None
+
+    def _load_best_checkpoint(self):
+        if self.valid_losses:
+            best_epoch = sorted(self.valid_losses.items(), key=lambda x:x[1])[0][0]
+            loaded_epoch = self._load_checkpoint(epoch=best_epoch, only_model=True)
 
     def _step_optim(self):
         if type(self.optimizer) is list:
@@ -182,7 +195,7 @@ class TorchTrainer():
     
     def lr_find(self, dl, optimizer=None, start_lr=1e-7, end_lr=1e-2, num_iter=200):
         if optimizer is None:
-            optimizer = torch.optim.SGD(model.parameters(), lr=1e-6, momentum=0.9)
+            optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-6, momentum=0.9)
         lr_finder = LRFinder(self.model, optimizer, self.loss_fn, device=self.device)
         lr_finder.range_test(dl, start_lr=start_lr, end_lr=end_lr, num_iter=num_iter)
         lr_finder.plot()
@@ -208,13 +221,14 @@ class TorchTrainer():
                     running_loss = 0
                 if self.scheduler is not None and self.scheduler_batch_step:
                     self._step_scheduler()
-            print(f'Training loss at epoch {i} - {np.mean(training_losses)}')
+            print(f'Training loss at epoch {i + 1} - {np.mean(training_losses)}')
             if valid_dataloader is not None:
                 valid_loss, additional_metrics = self.evaluate(valid_dataloader)
                 self.writer.add_scalar('validation loss', valid_loss, i)
                 if additional_metrics is not None:
                     print(additional_metrics)
-                print(f'Valid loss at epoch {i} - {valid_loss}')
+                print(f'Valid loss at epoch {i + 1} - {valid_loss}')
+                self.valid_losses[i+1] = valid_loss
             if self.scheduler is not None and not self.scheduler_batch_step:
                 self._step_scheduler(valid_loss)
             if (i + 1) % self.train_checkpoint_interval == 0:

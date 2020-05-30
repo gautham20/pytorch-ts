@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class DecoderCell(nn.Module):
-    def __init__(self, input_feature_len, hidden_size, positive_pred):
+    def __init__(self, input_feature_len, hidden_size, positive_pred, dropout=0.2):
         super().__init__()
         # attention - inputs - (decoder_inputs, prev_hidden)
         # attention_combine - inputs - (decoder_inputs, attention * encoder_outputs)
@@ -14,13 +14,14 @@ class DecoderCell(nn.Module):
         self.out = nn.Linear(hidden_size, 1)
         self.attention = False
         self.positive_pred = positive_pred
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, prev_hidden, y):
         rnn_hidden = self.decoder_rnn_cell(y, prev_hidden)
         output = self.out(rnn_hidden)
         if self.positive_pred:
             output = F.relu(output)
-        return output, rnn_hidden
+        return output, self.dropout(rnn_hidden)
 
     
 class AttentionDecoderCell(nn.Module):

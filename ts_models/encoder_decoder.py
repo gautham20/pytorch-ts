@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
-## TODO - support multiple RNN layers in encoder
+##TODO - support multiple RNN layers in encoder - partially supported now, figure out bidirection, multilayer encoder support
 
-class EncoderDecoderWrapper():
+class EncoderDecoderWrapper(nn.Module):
     def __init__(self, encoder, decoder_cell, output_size=3, teacher_forcing=0.3, sequence_len=336, decoder_input=True):
         super().__init__()
         self.encoder = encoder
@@ -13,30 +12,9 @@ class EncoderDecoderWrapper():
         self.output_size = output_size
         self.teacher_forcing = teacher_forcing
         self.sequence_length = sequence_len
-        self.mode = 'train'
         self.decoder_input = decoder_input
 
-    def train(self):
-        self.mode = 'train'
-        self.encoder.train()
-        self.decoder_cell.train()
-
-    def eval(self):
-        self.mode = 'eval'
-        self.encoder.eval()
-        self.decoder_cell.eval()
-
-    def state_dict(self):
-        return {
-            'encoder': self.encoder.state_dict(),
-            'decoder_cell': self.decoder_cell.state_dict()
-        }
-
-    def load_state_dict(self, state_dict):
-        self.encoder.load_state_dict(state_dict['encoder'])
-        self.decoder_cell.load_state_dict(state_dict['decoder_cell'])
-
-    def __call__(self, xb, yb=None):
+    def forward(self, xb, yb=None):
         if self.decoder_input:
             decoder_input = xb[-1]
             input_seq = xb[0]

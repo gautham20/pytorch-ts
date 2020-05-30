@@ -74,7 +74,7 @@ class RNNConcatEncoder(nn.Module):
 # Options - concat the hidden from n layers  
 # TODO - verify this implementation, understand RNN directions and num layers difference in output shapes
 class RNNEncoder(nn.Module):
-    def __init__(self, rnn_num_layers=1, input_feature_len=1, sequence_len=168, hidden_size=100, bidirectional=False, device='cpu'):
+    def __init__(self, rnn_num_layers=1, input_feature_len=1, sequence_len=168, hidden_size=100, bidirectional=False, device='cpu', rnn_dropout=0.2):
         super().__init__()
         self.sequence_len = sequence_len
         self.hidden_size = hidden_size
@@ -87,7 +87,7 @@ class RNNEncoder(nn.Module):
             hidden_size=hidden_size,
             batch_first=True,
             bidirectional=bidirectional,
-            dropout=0.1
+            dropout=rnn_dropout
         )
         self.device = device
 
@@ -101,7 +101,7 @@ class RNNEncoder(nn.Module):
             if self.rnn_directions > 1:
                 gru_out = gru_out.view(input_seq.size(0), self.sequence_len, num_layers, self.hidden_size)
                 gru_out = torch.sum(gru_out, axis=2)
-            hidden = hidden.permute(1,0,2).reshape(input_seq.size(0), -1)
+            hidden = hidden.permute(1, 0, 2).reshape(input_seq.size(0), -1)
         else:
             hidden.squeeze_(0)
         return gru_out, hidden

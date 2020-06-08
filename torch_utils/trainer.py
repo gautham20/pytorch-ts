@@ -27,7 +27,7 @@ class TorchTrainer():
         self.train_checkpoint_interval = kwargs.get('train_checkpoint_interval', 1)
         self.max_checkpoints = kwargs.get('max_checkpoints', 25)
         self.writer = SummaryWriter(f'runs/{name}')
-        self.scheduler_batch_step = kwargs.get('self.scheduler_batch_step', False)
+        self.scheduler_batch_step = kwargs.get('scheduler_batch_step', False)
         self.additional_metric_fns = kwargs.get('additional_metric_fns', {})
         self.additional_metric_fns = self.additional_metric_fns.items()
         self.pass_y = kwargs.get('pass_y', False)
@@ -35,7 +35,7 @@ class TorchTrainer():
         
     def _get_checkpoints(self, name=None):
         checkpoints = []
-        checkpoint_path = self.checkpoint_path if name is None else pathlib.Path(kwargs.get('checkpoint_folder', f'./models/{name}_chkpts'))
+        checkpoint_path = self.checkpoint_path if name is None else pathlib.Path(f'./models/{name}_chkpts')
         for cp in self.checkpoint_path.glob('checkpoint_*'):
             checkpoint_name = str(cp).split('/')[-1]
             checkpoint_epoch = int(checkpoint_name.split('_')[-1])
@@ -72,7 +72,7 @@ class TorchTrainer():
 
     def _load_checkpoint(self, epoch=None, only_model=False, name=None):
         if name is None:
-            checkpoints =  self._get_checkpoints()
+            checkpoints = self._get_checkpoints()
         else:
             checkpoints = self._get_checkpoints(name)
         if len(checkpoints) > 0:

@@ -70,9 +70,10 @@ class RNNConcatEncoder(nn.Module):
         return gru_out, encoder_concat_hidden
 
 
-# How to handle passing the hidden layer with multiple layers to the decoder?
-# Options - concat the hidden from n layers  
-# TODO - verify this implementation, understand RNN directions and num layers difference in output shapes
+#output shape
+# bidirectional output is summed
+# gru_out - (batch, sequence_len, hidden_size)
+# hidden - (batch, hidden_size) only the last layer for multi-layer
 class RNNEncoder(nn.Module):
     def __init__(self, rnn_num_layers=1, input_feature_len=1, sequence_len=168, hidden_size=100, bidirectional=False, device='cpu', rnn_dropout=0.2):
         super().__init__()
@@ -92,23 +93,23 @@ class RNNEncoder(nn.Module):
         self.device = device
 
     def forward(self, input_seq):
-        ht = torch.zeros(self.num_layers * self.rnn_directions, input_seq.size(0) , self.hidden_size, device=self.device)
+        ht = torch.zeros(self.num_layers * self.rnn_directions, input_seq.size(0), self.hidden_size, device=self.device)
         if input_seq.ndim < 3:
             input_seq.unsqueeze_(2)
         gru_out, hidden = self.gru(input_seq, ht)
+        print(gru_out.shape)
+        print(hidden.shape)
         if self.rnn_directions * self.num_layers > 1:
             num_layers = self.rnn_directions * self.num_layers
             if self.rnn_directions > 1:
-                gru_out = gru_out.view(input_seq.size(0), self.sequence_len, num_layers, self.hidden_size)
+                gru_out = gru_out.view(input_seq.size(0), self.sequence_len, self.rnn_directions, self.hidden_size)
                 gru_out = torch.sum(gru_out, axis=2)
-            hidden = hidden.permute(1, 0, 2).reshape(input_seq.size(0), -1)
+            hidden = hidden.view(self.num_layers, self.rnn_directions, input_seq.size(0), self.hidden_size)
+            if self.num_layers > 0:
+                hidden = hidden[-1]
+            else:
+                hidden = hidden.squeeze(0)
+            hidden = hidden.sum(axis=0)
         else:
             hidden.squeeze_(0)
         return gru_out, hidden
-
-
-# Proof check for hidden concat logic
-# num_layers, bs, hidden_size
-# a = torch.rand([2, 3, 2])
-# a.shape
-# a.permute(1,0,2).reshape(3, -1)

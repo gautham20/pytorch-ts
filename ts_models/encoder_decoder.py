@@ -2,10 +2,8 @@ import torch
 import torch.nn as nn
 
 
-##TODO - support multiple RNN layers in encoder - partially supported now, figure out bidirection, multilayer encoder support
-
 class EncoderDecoderWrapper(nn.Module):
-    def __init__(self, encoder, decoder_cell, output_size=3, teacher_forcing=0.3, sequence_len=336, decoder_input=True):
+    def __init__(self, encoder, decoder_cell, output_size=3, teacher_forcing=0.3, sequence_len=336, decoder_input=True, device='cpu'):
         super().__init__()
         self.encoder = encoder
         self.decoder_cell = decoder_cell
@@ -13,6 +11,7 @@ class EncoderDecoderWrapper(nn.Module):
         self.teacher_forcing = teacher_forcing
         self.sequence_length = sequence_len
         self.decoder_input = decoder_input
+        self.device = device
 
     def forward(self, xb, yb=None):
         if self.decoder_input:
@@ -30,10 +29,7 @@ class EncoderDecoderWrapper(nn.Module):
                 input_seq = xb
                 encoder_output, encoder_hidden = self.encoder(input_seq)
         prev_hidden = encoder_hidden
-        if torch.cuda.is_available():
-            outputs = torch.zeros(input_seq.size(0), self.output_size, device='cuda')
-        else:
-            outputs = torch.zeros(input_seq.size(0), self.output_size)
+        outputs = torch.zeros(input_seq.size(0), self.output_size, device=self.device)
         y_prev = input_seq[:, -1, 0].unsqueeze(1)
         for i in range(self.output_size):
             step_decoder_input = torch.cat((y_prev, decoder_input[:, i]), axis=1)

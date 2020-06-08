@@ -33,7 +33,8 @@ def reduce_mem_usage(df, verbose=True):
                 else:
                     df[col] = df[col].astype(np.float64)    
     end_mem = df.memory_usage().sum() / 1024**2
-    if verbose: print('Mem. usage decreased to {:5.2f} Mb ({:.1f}% reduction)'.format(end_mem, 100 * (start_mem - end_mem) / start_mem))
+    if verbose:
+        print('Mem. usage decreased to {:5.2f} Mb ({:.1f}% reduction)'.format(end_mem, 100 * (start_mem - end_mem) / start_mem))
     return df
 
 
@@ -73,10 +74,12 @@ def split_sequence_difference(group_data, n_steps_in, n_steps_out, x_cols, y_col
         traceback.print_exc()
 
 # split a multivariate sequence into samples
-def split_sequences(group_data, n_steps_in, n_steps_out, x_cols, y_cols, additional_columns, step=1):
+def split_sequences(group_data, n_steps_in, n_steps_out, x_cols, y_cols, additional_columns, step=1, lag_fns=[]):
     X, y = list(), list()
     additional_col_map = defaultdict(list)
     group_data = group_data.sort_values('date')
+    for i, lag_fn in enumerate(lag_fns):
+        group_data[f'lag_{i}'] = lag_fn(group_data[y_cols[0]])
     steps = list(range(0, len(group_data), step))
     if step != 1 and steps[-1] != (len(group_data) - 1):
         steps.append((len(group_data) - 1))
@@ -90,7 +93,7 @@ def split_sequences(group_data, n_steps_in, n_steps_out, x_cols, y_cols, additio
         # gather input and output parts of the pattern
         if len(x_cols) == 1:
             x_cols = x_cols[0]
-        seq_x, seq_y = group_data.iloc[i:end_ix, :][x_cols].values, group_data.iloc[end_ix:out_end_ix, :][y_cols].values
+        seq_x, seq_y = group_data.iloc[i:end_ix, :][x_cols].values, group_data.iloc[end_ix:out_end_ix, :][y_cols + [f'lag_{i}' for i in range(len(lag_fns))]].values
         for col in additional_columns:
             additional_col_map[col].append(group_data.iloc[end_ix][col])
         X.append(seq_x)
@@ -121,7 +124,7 @@ def mp_apply(df, func, key_column):
     result = process_map(_apply_df, [(d, func, key_column) for d in split_dfs], max_workers=workers)
     return pd.concat(result)
 
-def sequence_builder(data, n_steps_in, n_steps_out, key_column, x_cols, y_col, y_cols, additional_columns, diff=False, step=1):
+def sequence_builder(data, n_steps_in, n_steps_out, key_column, x_cols, y_col, y_cols, additional_columns, diff=False, lag_fns=[], step=1):
     if diff:
         # multiple y_cols not supported yet
         sequence_fn = partial(
@@ -140,6 +143,7 @@ def sequence_builder(data, n_steps_in, n_steps_out, key_column, x_cols, y_col, y
             key_column
         )
     else:
+        # first entry in y_cols should be the target variable
         sequence_fn = partial(
             split_sequences,
             n_steps_in=n_steps_in,
@@ -147,6 +151,7 @@ def sequence_builder(data, n_steps_in, n_steps_out, key_column, x_cols, y_col, y
             x_cols=x_cols,
             y_cols=y_cols,
             additional_columns=list(set([key_column] + additional_columns)),
+            lag_fns=lag_fns,
             step=step
         )
         sequence_data = mp_apply(
@@ -172,13 +177,16 @@ def sequence_builder(data, n_steps_in, n_steps_out, key_column, x_cols, y_col, y
     return sequence_data
 
 
+def last_year_lag(col): return (col.shift(364) * 0.25) + (col.shift(365) * 0.5) + (col.shift(366) * 0.25)
+
 if __name__ == '__main__':
-    data = reduce_mem_usage(pd.read_pickle('../data/processed_data_log_valid_stdscaler.pkl'))
+    data = reduce_mem_usage(pd.read_pickle('../data/processed_data_test_stdscaler.pkl'))
     sequence_data = sequence_builder(data, 180, 90, 
         'store_item_id', 
-        ['sales', 'day_sin', 'day_cos', 'dayofweek_sin', 'dayofweek_cos', 'month_sin', 'month_cos', 'year_mod'], 
+        ['sales', 'dayofweek_sin', 'dayofweek_cos', 'month_sin', 'month_cos', 'year_mod', 'day_sin', 'day_cos'], 
         'sales', 
-        ['sales', 'day_sin', 'day_cos', 'dayofweek_sin', 'dayofweek_cos', 'month_sin', 'month_cos', 'year_mod'],
-        ['item', 'store', 'date', 'mean_sales']
+        ['sales', 'dayofweek_sin', 'dayofweek_cos', 'month_sin', 'month_cos', 'year_mod', 'day_sin', 'day_cos'],
+        ['item', 'store', 'date', 'yearly_corr'],
+        lag_fns=[last_year_lag]
     )
-    sequence_data.to_pickle('../sequence_data/sequence_data_log_stdscaler_valid.pkl')
+    sequence_data.to_pickle('../sequence_data/sequence_data_stdscaler_test.pkl')

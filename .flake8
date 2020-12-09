@@ -1,0 +1,9 @@
+[flake8]
+max-line-length = 140
+per-file-ignores =
+    torch_utils/trainer.py:E501
+    ts_utils/sequence_builder.py:E203
+    torch_utils/predictor.py:F841,F821
+    torch_utils/trainer.py:E203,F811,F841
+    ts_utils/pickling.py:E203
+max-complexity = 25

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class DecoderCell(nn.Module):
     def __init__(self, input_feature_len, hidden_size, dropout=0.2):
         super().__init__()
@@ -29,13 +30,15 @@ class AttentionDecoderCell(nn.Module):
         self.decoder_rnn_cell = nn.GRUCell(
             input_size=hidden_size,
             hidden_size=hidden_size,
-    )
+        )
         self.dropout = nn.Dropout(dropout)
         self.out = nn.Linear(hidden_size, 1)
 
     def forward(self, encoder_output, prev_hidden, y):
         attention_input = torch.cat((prev_hidden, y), axis=1)
-        attention_weights = F.softmax(self.attention_linear(attention_input)).unsqueeze(1)
+        attention_weights = F.softmax(self.attention_linear(attention_input)).unsqueeze(
+            1
+        )
         attention_combine = torch.bmm(attention_weights, encoder_output).squeeze(1)
         rnn_hidden = self.decoder_rnn_cell(attention_combine, prev_hidden)
         output = self.out(rnn_hidden)

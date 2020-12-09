@@ -1,0 +1,17 @@
+ipykernel==5.3.4
+ipywidgets==7.5.1
+jupyterlab==2.2.9
+matplotlib==3.3.3
+numpy==1.19.4
+pandas==1.1.5
+pip
+plotly==4.14.0
+plotly-express==0.4.1
+pre-commit==2.9.3
+scikit-learn==0.23.2
+tensorboard==2.4.0
+torch==1.7.0
+torch-lr-finder==0.2.1
+torchcontrib==0.0.2
+torchvision==0.8.1
+tqdm==4.54.1

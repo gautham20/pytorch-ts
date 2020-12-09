@@ -1,9 +1,12 @@
 # ignore data folders
-data
-sequence_data
-runs
-models
-results
+data/*csv
+/data/*.pkl
+sequence_data/*pkl
+sequence_data/*csv
+runs/
+models/
+results/
+.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
